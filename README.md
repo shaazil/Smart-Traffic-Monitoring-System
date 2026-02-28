@@ -85,7 +85,7 @@ vehicle-analysis-dashboard/
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/vehicle-analysis-dashboard.git
+git clone https://github.com/shaazil/vehicle-analysis-dashboard.git
 cd vehicle-analysis-dashboard
 ```
 
