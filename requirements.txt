@@ -1,9 +1,8 @@
 flask
-gunicorn
+opencv-python-headless
+numpy
 ultralytics
 torch
 torchvision
-opencv-python-headless
-numpy
-pillow
-easyocr==1.7.1
+Pillow
+gunicorn
