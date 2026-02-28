@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Analysis Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #00ff41;
+            --green-dim: #00cc33;
+            --green-dark: #003b00;
+            --bg: #0d0d0d;
+            --card-bg: #0a1a0a;
+            --border: #1a4a1a;
+            --text: #c8ffc8;
+            --muted: #5a8a5a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        #matrix-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.07;
+            pointer-events: none;
+        }
+
+        .scanline {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1000px;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        /* Header */
+        .logo-line {
+            font-size: 0.75rem;
+            letter-spacing: 6px;
+            color: var(--muted);
+            margin-bottom: 16px;
+            animation: fade-in 1s ease forwards;
+        }
+
+        .title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(1.6rem, 4.5vw, 3rem);
+            font-weight: 900;
+            color: var(--green);
+            text-shadow: 0 0 30px rgba(0,255,65,0.6), 0 0 60px rgba(0,255,65,0.2);
+            letter-spacing: 5px;
+            line-height: 1.2;
+            animation: flicker 4s infinite, fade-in 1s ease forwards;
+        }
+
+        .tagline {
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-top: 12px;
+            letter-spacing: 3px;
+            animation: fade-in 1.3s ease forwards;
+        }
+
+        @keyframes flicker {
+            0%, 95%, 100% { opacity: 1; }
+            96% { opacity: 0.8; }
+            97% { opacity: 1; }
+            98% { opacity: 0.5; }
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 40px 0;
+            opacity: 0;
+            animation: fade-in 1.5s ease forwards;
+            animation-delay: 0.3s;
+        }
+
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
+        }
+
+        .divider-text {
+            color: var(--muted);
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+        }
+
+        /* Dashboard Cards */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            opacity: 0;
+            animation: fade-in 1s ease forwards;
+            animation-delay: 0.5s;
+        }
+
+        @media (max-width: 700px) {
+            .dashboard { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 30px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,255,65,0.04), transparent);
+            transition: left 0.6s;
+        }
+
+        .card:hover::before { left: 100%; }
+
+        .card:hover {
+            border-color: var(--green);
+            box-shadow: 0 0 25px rgba(0,255,65,0.15), inset 0 0 20px rgba(0,255,65,0.03);
+            transform: translateY(-3px);
+        }
+
+        .card-icon {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .card-num {
+            font-size: 0.65rem;
+            color: var(--muted);
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+
+        .card-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--green);
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .card-desc {
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.6;
+            letter-spacing: 0.5px;
+        }
+
+        .card-arrow {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            color: var(--border);
+            font-size: 1rem;
+            transition: color 0.3s, transform 0.3s;
+        }
+
+        .card:hover .card-arrow {
+            color: var(--green);
+            transform: translate(3px, -3px);
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 50px;
+            color: var(--muted);
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            opacity: 0;
+            animation: fade-in 1s ease forwards;
+            animation-delay: 0.8s;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+    <canvas id="matrix-bg"></canvas>
+
+    <div class="page-wrapper">
+        <div class="logo-line">// COMPUTER VISION SYSTEM v2.0 //</div>
+        <h1 class="title">VEHICLE ANALYSIS<br>DASHBOARD</h1>
+        <!-- <p class="tagline">[ POWERED BY YOLO11 · RESNET50 · EASYOCR ]</p> -->
+
+        <div class="divider">
+            <div class="divider-line"></div>
+            <div class="divider-text">SELECT MODULE</div>
+            <div class="divider-line"></div>
+        </div>
+
+        <div class="dashboard">
+            <div class="card" onclick="window.location.href='/detect'">
+                <span class="card-icon">🔍</span>
+                <div class="card-num">MODULE 01</div>
+                <div class="card-title">VEHICLE DETECTION & ANALYSIS</div>
+                <div class="card-desc">Detect and classify vehicles from images or video using YOLO + ResNet50. Get type, confidence, and dimensions.</div>
+                <div class="card-arrow">↗</div>
+            </div>
+
+            <div class="card" onclick="window.location.href='/speed_road'">
+                <span class="card-icon">⚡</span>
+                <div class="card-num">MODULE 02</div>
+                <div class="card-title">SPEED ESTIMATION & ROAD TYPE</div>
+                <div class="card-desc">Real-time speed tracking per vehicle. Detects violations above 70 km/h and classifies road as highway, urban, or rural.</div>
+                <div class="card-arrow">↗</div>
+            </div>
+
+            <div class="card" onclick="window.location.href='/plates'">
+                <span class="card-icon">🚘</span>
+                <div class="card-num">MODULE 03</div>
+                <div class="card-title">NUMBER PLATE DETECTION</div>
+                <div class="card-desc">Detect and read Indian vehicle registration plates (XX 00 XX 0000) from photos and videos with OCR recognition.</div>
+                <div class="card-arrow">↗</div>
+            </div>
+        </div>
+
+        <div class="footer">// ALL PROCESSING RUNS LOCALLY · NO DATA STORED //</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const cols = Math.floor(canvas.width / 14);
+        const drops = Array(cols).fill(1);
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0,0,0,0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff41';
+            ctx.font = '12px Share Tech Mono';
+            drops.forEach((y, i) => {
+                const char = Math.random() > 0.5
+                    ? String.fromCharCode(0x30A0 + Math.random() * 96)
+                    : Math.floor(Math.random() * 10);
+                ctx.fillText(char, i * 14, y * 14);
+                if (y * 14 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            });
+        }
+        setInterval(drawMatrix, 50);
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

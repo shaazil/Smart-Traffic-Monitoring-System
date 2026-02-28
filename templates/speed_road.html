@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed & Road Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #00ff41;
+            --green-dim: #00cc33;
+            --green-dark: #003b00;
+            --bg: #0d0d0d;
+            --card-bg: #0a1a0a;
+            --border: #1a4a1a;
+            --text: #c8ffc8;
+            --muted: #5a8a5a;
+            --red: #ff4141;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #matrix-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.07;
+            pointer-events: none;
+        }
+
+        .scanline {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--green); }
+
+        header { text-align: center; margin-bottom: 40px; }
+
+        .title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(1.2rem, 3.2vw, 2.2rem);
+            font-weight: 900;
+            color: var(--green);
+            text-shadow: 0 0 20px rgba(0,255,65,0.5), 0 0 40px rgba(0,255,65,0.2);
+            letter-spacing: 4px;
+            animation: flicker 4s infinite;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.8rem;
+            margin-top: 8px;
+            letter-spacing: 2px;
+        }
+
+        @keyframes flicker {
+            0%, 95%, 100% { opacity: 1; }
+            96% { opacity: 0.8; }
+            97% { opacity: 1; }
+            98% { opacity: 0.6; }
+        }
+
+        /* Upload */
+        .upload-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 30px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .upload-section::before {
+            content: '[ UPLOAD MODULE ]';
+            position: absolute;
+            top: -10px; left: 20px;
+            background: var(--bg);
+            color: var(--green-dim);
+            font-size: 0.7rem;
+            padding: 0 8px;
+            letter-spacing: 2px;
+        }
+
+        .drop-zone {
+            width: 100%;
+            padding: 45px;
+            border: 2px dashed var(--border);
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--green);
+            background: rgba(0,255,65,0.03);
+            box-shadow: inset 0 0 20px rgba(0,255,65,0.05);
+        }
+
+        .drop-text { color: var(--green-dim); letter-spacing: 2px; font-size: 0.95rem; }
+        .drop-sub  { color: var(--muted); font-size: 0.75rem; margin-top: 6px; }
+
+        .submit-btn {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            padding: 14px;
+            background: transparent;
+            border: 2px solid var(--green);
+            color: var(--green);
+            font-family: 'Orbitron', monospace;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            left: -100%; top: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,255,65,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .submit-btn:hover::before { left: 100%; }
+        .submit-btn:hover {
+            background: rgba(0,255,65,0.08);
+            box-shadow: 0 0 20px rgba(0,255,65,0.3);
+        }
+
+        /* Loading */
+        #loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            color: var(--green-dim);
+        }
+
+        .loading-bar {
+            width: 100%;
+            height: 3px;
+            background: var(--border);
+            margin: 15px 0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .loading-bar-fill {
+            height: 100%;
+            background: var(--green);
+            animation: loading-anim 1.5s ease-in-out infinite;
+            box-shadow: 0 0 10px var(--green);
+        }
+
+        @keyframes loading-anim {
+            0% { width: 0%; margin-left: 0; }
+            50% { width: 60%; margin-left: 20%; }
+            100% { width: 0%; margin-left: 100%; }
+        }
+
+        /* Stream section */
+        .stream-section {
+            display: none;
+        }
+
+        .stream-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .stream-grid { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .panel-label {
+            position: absolute;
+            top: -10px; left: 20px;
+            background: var(--bg);
+            color: var(--green-dim);
+            font-size: 0.7rem;
+            padding: 0 8px;
+            letter-spacing: 2px;
+        }
+
+        .video-stream {
+            width: 100%;
+            border-radius: 2px;
+            border: 1px solid var(--border);
+            display: block;
+        }
+
+        /* Live stats */
+        .summary-header {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.85rem;
+            color: var(--green);
+            letter-spacing: 3px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0,255,65,0.08);
+            border: 1px solid var(--border);
+            color: var(--green-dim);
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 2px;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+            box-shadow: 0 0 6px var(--green);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .info-block {
+            background: #050f05;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .info-block-title {
+            font-size: 0.65rem;
+            color: var(--muted);
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+        }
+
+        .info-block-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.1rem;
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .note {
+            font-size: 0.72rem;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+    <canvas id="matrix-bg"></canvas>
+
+    <div class="page-wrapper">
+        <a href="/" class="back-link">← BACK TO DASHBOARD</a>
+
+        <header>
+            <h1 class="title">SPEED ESTIMATION & ROAD ANALYSIS</h1>
+            <p class="subtitle">[ REAL-TIME VEHICLE TRACKING & ROAD TYPE CLASSIFICATION ]</p>
+        </header>
+
+        <div class="upload-section">
+            <form id="uploadForm" action="{{ url_for('speed_road') }}" method="post" enctype="multipart/form-data">
+                <div class="drop-zone" id="dropZone">
+                    <p class="drop-text" id="dropText">Drag & drop video here or click to upload</p>
+                    <p class="drop-sub">Supported: MP4, AVI</p>
+                    <input type="file" name="file" accept="video/*" required id="fileInput" hidden>
+                </div>
+                <button type="submit" class="submit-btn">ANALYZE VIDEO</button>
+            </form>
+        </div>
+
+        <div id="loading">
+            <div>UPLOADING & INITIALIZING STREAM...</div>
+            <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+        </div>
+
+        {% if filename %}
+        <div class="stream-section" id="streamSection" style="display:block;">
+            <div class="stream-grid">
+                <div class="panel">
+                    <span class="panel-label">[ LIVE STREAM OUTPUT ]</span>
+                    <img class="video-stream"
+                         src="{{ url_for('video_feed', filename=filename) }}"
+                         alt="Processed Video Stream">
+                </div>
+                <div class="panel">
+                    <span class="panel-label">[ ANALYSIS INFO ]</span>
+                    <div class="summary-header">STREAM ACTIVE</div>
+                    <div class="live-badge">
+                        <div class="live-dot"></div>
+                        LIVE PROCESSING
+                    </div>
+
+                    <div class="info-block">
+                        <div class="info-block-title">SPEED LIMIT THRESHOLD</div>
+                        <div class="info-block-value">70 km/h</div>
+                    </div>
+
+                    <div class="info-block">
+                        <div class="info-block-title">CURRENT FILE</div>
+                        <div class="info-block-value" style="font-size:0.75rem; letter-spacing:1px; word-break:break-all;">{{ filename }}</div>
+                    </div>
+
+                    <div style="margin-top: 18px;">
+                        <div style="font-size:0.7rem; color:var(--muted); letter-spacing:2px; margin-bottom:10px;">COLOUR LEGEND</div>
+                        <div class="legend-row">
+                            <div class="legend-dot" style="background:#0000ff;"></div>
+                            Speed within limit
+                        </div>
+                        <div class="legend-row">
+                            <div class="legend-dot" style="background:#ff0000;"></div>
+                            Speed violation (&gt;70 km/h)
+                        </div>
+                        <div class="legend-row">
+                            <div class="legend-dot" style="background:#00ffff;"></div>
+                            Bounding box
+                        </div>
+                    </div>
+
+                    <div class="note">
+                        Road type is classified based on vehicle density:<br>
+                        ≤20 vehicles → Highway<br>
+                        21–50 vehicles → Urban Road<br>
+                        &gt;50 vehicles → Rural Road
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Matrix rain
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const cols = Math.floor(canvas.width / 14);
+        const drops = Array(cols).fill(1);
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0,0,0,0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff41';
+            ctx.font = '12px Share Tech Mono';
+            drops.forEach((y, i) => {
+                const char = Math.random() > 0.5
+                    ? String.fromCharCode(0x30A0 + Math.random() * 96)
+                    : Math.floor(Math.random() * 10);
+                ctx.fillText(char, i * 14, y * 14);
+                if (y * 14 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            });
+        }
+        setInterval(drawMatrix, 50);
+
+        // File handling
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const dropText  = document.getElementById('dropText');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                fileInput.files = e.dataTransfer.files;
+                dropText.textContent = e.dataTransfer.files[0].name;
+            }
+        });
+        fileInput.addEventListener('change', () => {
+            dropText.textContent = fileInput.files[0]?.name || 'Drag & drop video here';
+        });
+
+        document.getElementById('uploadForm').onsubmit = () => {
+            document.getElementById('loading').style.display = 'block';
+        };
+    </script>
+</body>
+</html>
