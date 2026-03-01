@@ -11,7 +11,7 @@ A computer vision web application built with Flask that performs **vehicle detec
 
 ## 📸 Preview
 
-> Dark matrix-themed UI with real-time detection overlays across all three modules.
+> [Render Deployment](https://smart-traffic-monitoring.onrender.com)
 
 ---
 
@@ -53,6 +53,13 @@ A computer vision web application built with Flask that performs **vehicle detec
 | OCR | [EasyOCR](https://github.com/JaidedAI/EasyOCR) |
 | Image Processing | OpenCV, Pillow |
 | Frontend | HTML, CSS, Vanilla JS (matrix rain UI) |
+
+---
+
+## Branches
+
+- [main (Cloud-optimized deployment (Render / free-tier friendly))](https://github.com/shaazil/Smart-Traffic-Monitoring-System/tree/main)
+- [local-dev (full-performance)](https://github.com/shaazil/Smart-Traffic-Monitoring-System/tree/local-dev)
 
 ---
 
