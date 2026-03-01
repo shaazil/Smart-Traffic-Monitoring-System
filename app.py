@@ -18,12 +18,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER,  exist_ok=True)
 
-# ── Models ────────────────────────────────────────────────────────────────────
-model       = YOLO(os.path.join(BASE_DIR, "yolo11n.pt"))
-plate_model = YOLO(os.path.join(BASE_DIR, "license_plate_detector.pt"))
+# ── To save memory and easier web hosting(free) (could be removed while running loaclly) ─────────
+torch.set_num_threads(1)   # HUGE memory saver
 
-classifier_model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
-classifier_model.eval()
+model = None
+plate_model = None
+classifier_model = None
+# ── Models ─(define here itself while running locally for better performace) ────────
+# model       = YOLO(os.path.join(BASE_DIR, "yolo11n.pt"))
+# plate_model = YOLO(os.path.join(BASE_DIR, "license_plate_detector.pt"))
+
+# classifier_model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
+# classifier_model.eval()
 
 # ── Vehicle class map (ResNet50 ImageNet IDs) ─────────────────────────────────
 vehicles = {
@@ -49,12 +55,34 @@ highway_density_threshold = 20
 urban_density_threshold   = 50
 vehicle_positions         = {}
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers #for easing memory
+# ─────────────────────────────────────────────────────────────────────────────
+def load_models(need_vehicle=False, need_plate=False, need_classifier=False):
+    global model, plate_model, classifier_model
+
+    if need_vehicle and model is None:
+        print("Loading YOLO vehicle model...")
+        model = YOLO(os.path.join(BASE_DIR, "yolo11n.pt"))
+
+    if need_plate and plate_model is None:
+        print("Loading YOLO plate model...")
+        plate_model = YOLO(os.path.join(BASE_DIR, "license_plate_detector.pt"))
+
+    if need_classifier and classifier_model is None:
+        print("Loading ResNet50 classifier...")
+        classifier_model = models.resnet50(
+            weights=models.ResNet50_Weights.IMAGENET1K_V1
+        )
+        classifier_model.eval()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers — vehicle detection
 # ─────────────────────────────────────────────────────────────────────────────
 
 def classify_vehicle(image, box):
+    load_models(need_classifier=True)
+
     x1, y1, x2, y2 = map(int, box)
     crop = image[y1:y2, x1:x2]
     pil  = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
@@ -89,6 +117,7 @@ def determine_road_type(count):
 
 
 def generate_frames(input_path):
+    load_models(need_vehicle=True) # for easing memory
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened():
         return
@@ -175,6 +204,7 @@ def detect():
 
 @app.route('/detect/process', methods=['POST'])
 def process_file():
+    load_models(need_vehicle=True, need_classifier=True)#for easing memory
     file = request.files.get('file')
     if not file:
         return 'No file uploaded', 400
@@ -266,6 +296,7 @@ def process_plates():
     Returns cropped + preprocessed plate images as base64 so Tesseract.js
     can run OCR entirely in the browser. No easyocr dependency needed.
     """
+    load_models(need_plate=True) #for easing memory
     file = request.files.get('file')
     if not file:
         return jsonify({'error': 'No file uploaded'}), 400
